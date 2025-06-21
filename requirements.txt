@@ -1,0 +1,5 @@
+pennylane
+aiosqlite 
+cryptography 
+opencv-python
+httpx
