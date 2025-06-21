@@ -8,13 +8,14 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from datetime import datetime
 import secrets
-import openai
+import httpx
+import json
 import pennylane as qml
 from pennylane import numpy as pnp
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-# 🔐 Load API Key from environment
-openai.api_key = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 
 # 🧠 Quantum Circuit Setup
 dev = qml.device("default.qubit", wires=7)
@@ -104,15 +105,22 @@ Entropy Score: {entropy_score:.4f}
 Quantum Output: {quantum_output}
 """
 
-def ask_openai(prompt):
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
+async def ask_openai(prompt):
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "gpt-4",
+        "messages": [
             {"role": "system", "content": "You are a quantum civic infrastructure planner."},
             {"role": "user", "content": prompt}
         ]
-    )
-    return response["choices"][0]["message"]["content"]
+    }
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(OPENAI_API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
 
 def encrypt_data(data, key):
     aesgcm = AESGCM(key)
@@ -136,7 +144,7 @@ async def log_result_to_db(encrypted_result, entropy_score):
 class RoadSafetyGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Quantum Road Safety Scanner v2.1")
+        self.title("Quantum Road Safety Scanner v2.1 (httpx)")
         self.geometry("960x720")
         self.secret_key = AESGCM.generate_key(bit_length=128)
         self.image_paths = []
@@ -156,6 +164,9 @@ class RoadSafetyGUI(tk.Tk):
             messagebox.showinfo("Folder Loaded", f"{len(self.image_paths)} images found.")
 
     def run_batch_scan(self):
+        asyncio.run(self._run_batch_scan_async())
+
+    async def _run_batch_scan_async(self):
         if not self.image_paths:
             messagebox.showerror("Error", "No images loaded.")
             return
@@ -167,9 +178,9 @@ class RoadSafetyGUI(tk.Tk):
                 entropy = float(np.std(color_vec)) + float(np.std(q_out))
                 location = os.path.basename(path).split('.')[0].replace("_", " ")
                 prompt = generate_road_prompt(color_vec, q_out, location)
-                result = ask_openai(prompt)
+                result = await ask_openai(prompt)
                 encrypted = encrypt_data(result, self.secret_key)
-                asyncio.run(log_result_to_db(encrypted, entropy))
+                await log_result_to_db(encrypted, entropy)
                 self.output.insert("end", f"\n=== {os.path.basename(path)} ===\n{result}\n\n---\n")
             except Exception as e:
                 self.output.insert("end", f"Error processing {path}: {e}\n")
