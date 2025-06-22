@@ -1,10 +1,6 @@
-Here is the extended version of the Quantum Road Safety Corridor Report for SC-123, from Easley to Seneca, incorporating deeper insights, SCDOT-aligned language, and multitemporal infrastructure projections.
-
-
----
 
 🛰️ Quantum Road Safety Corridor Report
-
+![Quantum SCDOT Road Sign](https://raw.githubusercontent.com/dosh41126/quantum-scdot-road-signs/refs/heads/main/Roadsafe.png)
 Highway: South Carolina 123 (Easley → Clemson → Seneca)
 Scan Date: June 21, 2025
 Prepared For: South Carolina Department of Transportation (SCDOT)
